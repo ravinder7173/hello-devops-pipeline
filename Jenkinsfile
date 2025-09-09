@@ -1,7 +1,7 @@
 pipeline {
   agent any
   environment {
-    IMAGE = "ravinder.singh@cloudsmartZ.net/hello-app"
+    IMAGE = "ravinder.singh@cloudsmartz.net/hello-app"
   }
   stages {
     stage('Checkout') {
