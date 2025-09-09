@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: hello
-        image: yourdockerhubuser/hello-app:latest
+        image: ravinder7173/hello-app:latest
         ports:
         - containerPort: 3000
         env:
