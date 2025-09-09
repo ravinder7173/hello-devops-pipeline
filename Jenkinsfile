@@ -1,48 +1,45 @@
 pipeline {
-  agent any
-  environment {
-    IMAGE = "ravinder.singh@cloudsmartz.net/hello-app"
-  }
-  stages {
-    stage('Checkout') {
-      steps {
-        checkout scm
-      }
+    agent any
+
+    environment {
+        DOCKERHUB_CREDENTIALS = credentials('docker-hub-credentials')  // Jenkins credential ID
+        IMAGE_NAME = "ravinder7173/hello-app"   // change if using private registry
+        IMAGE_TAG = "1.0.0"
     }
 
-    stage('Build & Push Image') {
-      steps {
-        script {
-          withCredentials([usernamePassword(credentialsId: 'dockerhub-creds',
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_PASS')]) {
-            sh '''
-              docker build -t $IMAGE:$BUILD_NUMBER .
-              echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-              docker push $IMAGE:$BUILD_NUMBER
-            '''
-          }
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/ravinder7173/hello-devops-pipeline.git'
+            }
         }
-      }
+
+        stage('Build & Push Image') {
+            steps {
+                script {
+                    docker.withRegistry('https://index.docker.io/v1/', DOCKERHUB_CREDENTIALS) {
+                        def app = docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
+                        app.push()
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    sh 'kubectl apply -f k8s/deployment.yaml'
+                }
+            }
+        }
     }
 
-    stage('Deploy to Kubernetes') {
-      steps {
-        script {
-          sh '''
-            kubectl set image deployment/hello-app hello=$IMAGE:$BUILD_NUMBER --record || kubectl apply -f k8s/
-            kubectl rollout status deployment/hello-app
-          '''
+    post {
+        always {
+            echo 'Pipeline finished'
         }
-      }
+        failure {
+            echo 'Build failed — check logs'
+        }
     }
-  }
-  post {
-    success {
-      echo "Deployment successful!"
-    }
-    failure {
-      echo "Build failed — check logs."
-    }
-  }
 }
